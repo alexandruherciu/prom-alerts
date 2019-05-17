@@ -3,7 +3,7 @@ groups:
   rules:
 
   - alert: cpuUsage
-    expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{job='node_exporter',mode="idle"}[5m])) * 100) > 5
+    expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{job='node_exporter',mode="idle"}[5m])) * 100) > 95
     for: 1m
     labels:
       severity: critical
@@ -11,7 +11,7 @@ groups:
       summary: Machine under heavy load
 
   - alert: RamUsage
-    expr: ((node_memory_MemTotal_bytes - node_memory_MemFree_bytes) / node_memory_MemTotal_bytes) * 100 > 5
+    expr: ((node_memory_MemTotal_bytes - node_memory_MemFree_bytes) / node_memory_MemTotal_bytes) * 100 > 95
     for: 1m
     labels:
       severity: critical
@@ -99,5 +99,45 @@ groups:
       summary: "Instance {{ $labels.instance }} is low on disk space"
       description: "{{ $labels.instance }} has only {{ $value }}% free."
 
-#- name: OpenStack
-#  rules:
+- name: OpenStack
+  rules:
+  - alert: hypervisor_disk_usage
+    expr: (hypervisor_disk_gbs_used / hypervisor_disk_gbs_total) * 100 > 95
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Hypervisor {{ $labels.hostname }} reaching full disk utilisation"
+      description: "{{ $labels.hostname }} has only {{ $value }} left"
+  - alert: hypervisor_instance_capacity
+    expr: (hypervisor_schedulable_instances / hypervisor_schedulable_instances_capacity) * 100 > 95
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Hypervisor {{ $labels.hostname }} reaching full instance limit"
+      description: "{{ $labels.hostname }} has only {{ $value }}% left"
+  - alert: hypervisor_memory_utilisation
+    expr: (hypervisor_memory_mbs_used / hypervisor_memory_mbs_total) * 100 > 95
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      summary: Hypervisor reaching maximum memory utilisation
+  - alert: nova_quota_instances
+    expr: (nova_quota_instances{type="in_use"} / nova_quota_instances{type="limit"}) * 100 > 95
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Tenant {{ $labels.tenant }} is reaching Nova quota limit"
+      description: "{{ $labels.tenant }} has only {{ $value }} left"
+  - alert: cinder_quota_instances
+    expr: (cinder_quota_volume_disks{type="in_use"} / cinder_quota_volume_disks{type="limit"}) * 100 > 95
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Tenant {{ $labels.tenant }} is reaching Nova quota limit"
+      description: "{{ $labels.tenant }} has only {{ $value }} left"
+
